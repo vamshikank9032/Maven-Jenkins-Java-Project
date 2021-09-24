@@ -1,0 +1,159 @@
+def mvnHome
+def remote = [:]
+         remote.name = 'ansible'
+         remote.host = '172.31.30.225'
+         remote.user = 'centos'
+         remote.password = 'Rnstech@123'
+         remote.allowAnyHosts = true
+def remote1 = [:]
+    	remote1.name = 'kops'
+    	remote1.host = '172.31.62.36'
+    	remote1.user = 'centos'
+    	remote1.password = 'Rnstech@123'
+    	remote1.allowAnyHosts = true
+
+pipeline {
+   agent none
+    
+   stages {
+      stage('Prepare Workspace') {
+         agent {
+              label 'BuildServer'
+          }
+         steps {
+            // Get src code from a GitHub repository
+            git credentialsId: 'github_un-pwd', url: 'https://github.com/venkat09docs/Maven-Java-Project.git'
+            stash 'Source'
+            script{
+                mvnHome = tool name: 'maven3.6', type: 'maven'
+            }      
+      }   
+      }
+      
+      stage('Setup Tools'){
+         agent {
+              label 'BuildServer'
+          }
+          steps{
+          
+            sshCommand remote: remote, command: 'cd Maven-Java-Project; git pull'
+            //sshCommand remote: remote, command: 'cd Maven-Java-Project; ansible-playbook -i hosts tools/sonarqube/sonar-install.yaml'
+            //sshCommand remote: remote, command: 'cd Maven-Java-Project; ansible-playbook -i hosts tools/docker/docker-install.yml'
+
+            //K8s Setup
+            sshCommand remote: remote1, command: "cd Maven-Java-Project; git pull"
+	    sshCommand remote: remote1, command: "kubectl apply -f Maven-Java-Project/k8s-code/staging/namespace/staging-ns.yml"
+	    sshCommand remote: remote1, command: "kubectl apply -f Maven-Java-Project/k8s-code/prod/namespace/prod-ns.yml"
+          }
+      }      
+      stage('SonarQube analysis') {
+         agent {
+              label 'BuildServer'
+          }
+          steps{
+                echo "Sonar Scanner"
+                  
+                withSonarQubeEnv('sonar-7') { 
+                   sh "${mvnHome}/bin/mvn sonar:sonar"
+                }                     
+          }
+      }
+      
+      stage('Unit Test Cases') {
+         agent {
+              label 'BuildServer'
+          }
+          steps{
+              sh "${mvnHome}/bin/mvn clean test"  
+          }
+          post{
+              success{
+                  junit 'target/surefire-reports/*.xml'
+              }
+          }
+      }
+      
+       stage('Build Code') {
+         agent {
+              label 'BuildServer'
+          }
+          steps{
+              sh "${mvnHome}/bin/mvn clean package"  
+          }
+          post{
+              success{
+                  archiveArtifacts '**/*.war'
+              }
+          }
+      }
+      
+    stage('Build Docker Image') {
+         agent {
+                  label 'BuildServer'
+         }
+         steps{
+                  sh "docker build -t gvenkat/batch21webapp ."  
+         }
+     }
+     
+     stage('Publish Docker Image') {
+         agent {
+                  label 'BuildServer'
+         }
+    steps{
+
+    	withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
+    		sh "docker login -u ${dockerUser} -p ${dockerPassword}"
+	}
+        	sh "docker push gvenkat/batch21webapp"
+    }
+    }
+
+    stage('Deploy to Staging') {
+	agent {
+	      label 'BuildServer'
+	}
+	steps{
+	      //Deploy to K8s Cluster 
+              echo "Deploy to Staging Server"
+	      sshCommand remote: remote1, command: "cd Maven-Java-Project; git pull"
+	      sshCommand remote: remote1, command: "kubectl apply -f Maven-Java-Project/k8s-code/staging/app/."
+	}		    
+    }
+
+    stage ('Integration-Test') {
+	agent {
+		label "BuildServer"
+        }
+	steps {
+             echo "Run Integration Test Cases"
+             unstash 'Source'
+            sh "'${mvnHome}/bin/mvn' clean verify"
+        }
+    }
+
+    stage ('approve') {
+	agent {
+        	label "BuildServer"
+        }
+	steps {
+		echo "Approval State"
+                timeout(time: 7, unit: 'DAYS') {                    
+			input message: 'Do you want to deploy?', submitter: 'admin'
+		}
+	}
+     }
+
+    stage ('Prod-Deploy') {
+	agent {
+		label "BuildServer"
+        }
+	steps{
+              echo "Deploy to Production"
+	      //Deploy to Prod K8s Cluster
+	      sshCommand remote: remote1, command: "cd Maven-Java-Project; git pull"
+	      sshCommand remote: remote1, command: "kubectl apply -f Maven-Java-Project/k8s-code/prod/app/."
+	}
+	}
+   }
+}
