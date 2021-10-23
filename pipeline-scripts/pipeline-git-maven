@@ -10,7 +10,7 @@ pipeline {
       stage('Check Out Code') {
          steps {
             // Get src code from a GitHub repository
-            git credentialsId: 'git_user', url: 'https://github.com/venkat09docs/Maven-Java-Project.git'
+            git credentialsId: 'git_user', url: 'https://github.com/vamshikank9032/Maven-Jenkins-Java-Project.git'
                    
          }         
       }
