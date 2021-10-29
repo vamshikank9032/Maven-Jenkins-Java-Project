@@ -11,12 +11,5 @@ pipeline {
                 git credentialsId: 'github-server-credentials', url: 'https://github.com/vamshikank9032/Maven-Jenkins-Java-Project.git'
             }
         }
-      
-        post { 
-            success {
-                junit 'target/surefire-reports/*.xml'
-                archiveArtifacts artifacts: '**/*.war', followSymlinks: false 
-            }
-        }
     }
 }
