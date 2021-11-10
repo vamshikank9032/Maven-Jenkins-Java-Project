@@ -2,7 +2,7 @@ pipeline {
     agent { label 'jenkinsslave' }
     
   tools {
-     maven "maven3.6"
+     maven "maven3.0"
   }
   
     stages {
