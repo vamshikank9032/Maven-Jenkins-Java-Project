@@ -2,7 +2,7 @@ pipeline {
     agent { label 'buildserver' }
     
   tools {
-     maven "maven3.0"
+     maven "maven3.*.*"
   }
   
     stages {
