@@ -5,19 +5,9 @@
    become_method: sudo
    connection: ssh
    gather_facts: yes    
-   tasks: 
-   -  name: Upload a service file to the remote host if does not exist
-      copy:
-               src: sonar.service
-               dest: /etc/systemd/system/sonarqube.service
-               mode: 0755
-   -  name: Upload a service file to the remote host if does not exist
-      copy:
-               src: install.sh
-               dest: /home/centos/install.sh
-               mode: 0755
-   
-   -  name: Run the program
-      shell: /home/centos/install.sh
-      register: result
-   #-  debug: msg="stdout={{ result }}"
+   vars:
+      java_packages:                                                                                                                                         
+       -	Java-1.8.0-openjdk
+   roles:
+      -	geerlingguy.java
+      -	ansible-role-sonarqube     
