@@ -1,8 +1,8 @@
 pipeline {
-    agent { label 'buildserver' }
+    agent { label 'jenkinsslave' }
     
   tools {
-     maven "maven3.*.*"
+     maven "maven3.6"
   }
   
     stages {
