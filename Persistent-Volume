@@ -1,3 +1,4 @@
+## Install efs-cli first
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -7,12 +8,9 @@ spec:
     storage: 5Gi
   volumeMode: Filesystem
   accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Recycle
-  storageClassName: slow
-  mountOptions:
-    - hard
-    - nfsvers=4.0
-  nfs:
-    path: /dir/path/on/nfs/server
-    server: nfs-server-ip-address
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-cli
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-xxxxxxxx
