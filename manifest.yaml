@@ -34,5 +34,12 @@ spec:
         ports:
           - name: web
             containerPort: 3000
+        volumeMounts:
+        - name: mypd
+          mountPath: /etc/config
+      volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: pvc-name
       imagePullSecrets:
           - name: regcred
